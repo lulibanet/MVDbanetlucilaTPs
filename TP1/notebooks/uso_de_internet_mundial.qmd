@@ -3,3 +3,132 @@ title: "uso_de_internet_mundial"
 format: html
 ---
 
+####################### Librerías y carga de datos ######################
+# Tidyverse para usar sus funciones (EJ: para cambiar el formato de las tablas)
+library(tidyverse) 
+# Janitor para la función cleannames()
+library(janitor)
+# Here para las rutas relativas
+library(here)
+
+# Creo una función llamada "cargar_datos" para facilitar la carga de datos.
+# Los archivos contienen filas iniciales con información descriptiva
+# (Data Source, Last Updated Date) que no forman parte de la tabla de datos.
+# Por ello, se omiten al momento de la lectura para trabajar con la estructura correcta.
+# Recibe un argumento llamado path, que es la ruta relativa del archivo para
+# cargar y otro argumento llamado skip_filas, que son la cantidad de filas para saltear. 
+# Lee el csv y lo guarda en un objeto llamado "df", imprime
+# en consola el nombre de las columnas y devuelve el dataframe "df".
+cargar_datos <- function(path, skip_filas = 0) {
+  df <- read_csv(path, skip = skip_filas)
+  print(names(df))
+  return(df)
+}
+
+# Uso la nueva función para cargar los datos de los csv. Para internet, 
+# uso el argumento de skip_filas. En metadata, no es necesario.
+internet <- cargar_datos(
+  here("TP1", "data", "internet_users_world_wide.csv"),
+  skip_filas = 4 
+)
+
+metadata <- cargar_datos(
+  here("TP1", "data", "metadata_countries_internet_users.csv")
+)
+
+### Normalización de nombres y eliminado de columnas vacías (la última columna) ###
+internet <- internet %>% clean_names() %>% select(-last_col())
+
+metadata <- metadata %>% clean_names() %>% select(-last_col())
+
+####################### Pivoteo ###################################
+# Formato wide de los años en la tabla de internet (slicing dentro de 
+# la tabla donde selecciono solo las columnas que contienen años) y las ubico 
+# dentro de la columna "year". Los valores de ese indicador, pasarán
+# a formar parte de la columna "porcentaje_usuarios"
+internet_long <- internet %>% pivot_longer(cols = "x1960":"x2025", 
+names_to = "year", values_to = "porcentaje_usuarios")
+
+# Borro las x que agregó clean_names() a los valores de la columna year
+internet_long <- internet_long %>%
+  mutate(
+    year = as.integer(str_remove(year, "x"))
+  )
+  
+###################### Unión de las tablas ##########################
+# Uno las tablas en base a la tabla de internet_long con la "key" de 
+# "country_code" que está presente en ambas tablas.
+base <- internet_long %>% left_join(metadata, by = "country_code")
+
+################# Tratamiento de NAs ##############################
+# Primero, veo donde hay NAs en la tabla unida
+base %>% summarise(across(everything(), ~sum(is.na(.))))
+# Los NAs están concentrados en la variable porcentaje_usuarios e income_group, 
+# dos variables fundamentales para corroborar la hipótesis.Los NAs en las 
+# variables special_notes y region no son relevantes para el análisis, debido a 
+# que este se centra en el nivel de ingresos de diferentes países y el acceso 
+# a internet.
+
+# Entendiendo que hay NAs en las variables cruciales de la hipótesis, es
+# importante entender en qué sectores de ingreso de la variable 
+# porcentaje_usuarios están concentradas para luego decidir como tratarlas. 
+# Por eso, las agrupo en base a income_group para calcular la proporción de 
+# NAs de porcentaje usuarios en base a esa agrupación.
+base %>%
+  group_by(income_group) %>%
+  summarise(
+    prop_na = mean(is.na(porcentaje_usuarios)),
+    .groups = "drop"
+  )
+
+# Notando que la proporción de NAs es similar en todas los grupos relevantes
+# de ingreso, ignorar a los NAs no sesgaría el análisis demasiado a favor de 
+# ningún grupo. Por ende, se decide ignorar los NAs de las variables relevantes, 
+# borrando las observaciones que las incluyen de la tabla unificada "base", 
+# para no incluirlos en el análisis.
+base <- base %>% drop_na(porcentaje_usuarios, income_group)
+
+# Ordeno los grupos de ingresos en orden de menores ingresos a mayores ingresos 
+# con la función factor() para que mantengan esta jerarquía
+base <- base %>%
+  mutate(
+    income_group = factor(
+      income_group,
+      levels = c(
+        "Low income",
+        "Lower middle income",
+        "Upper middle income",
+        "High income")
+    )
+  )
+
+###################### Comprobación de la hipótesis ############################
+# Agrupando a las observaciones por su nivel de ingreso (variable income_group) 
+# y por año (variable year), filtrando el año por la última década (2013-2023),
+# calculo la proporción de usuarios de internet
+tabla_hip <- base %>% filter(year >= 2013 & year <= 2023) %>%
+  group_by(income_group, year) %>%
+  summarise(
+    prop_usuarios = mean(porcentaje_usuarios, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+# Cambio el formato de long a wide de la columna de grupo de ingreso para 
+# facilitar la lectura de la tabla y lo guardo como un objeto llamado tabla_hip
+tabla_hip <- tabla_hip %>% pivot_wider(
+  names_from = income_group,
+  values_from = prop_usuarios
+)
+
+# Agrego la columna indicator_name que no estaba previamente
+tabla_hip <- tabla_hip %>% mutate(
+indicator_name = "Proporción de la población que usa internet (%)")
+
+# Los resultados muestran que los países de ingresos bajos y medios presentan 
+# mayores tasas de crecimiento relativo en el acceso a internet durante 
+# 2013–2023, aunque los niveles absolutos siguen siendo significativamente 
+# menores que en los países de ingresos altos.
+
+###################### Armado del CSV #######################################
+write_csv(tabla_hip, "TP1/output/resultado_hipotesis.csv")
+
