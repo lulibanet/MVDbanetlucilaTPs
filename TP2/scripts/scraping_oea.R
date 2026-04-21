@@ -52,7 +52,8 @@ tabla_final <- tibble()
 for (mes in meses) {
   url_mes <- paste0(base_url, "?nMes=", mes, "&nAnio=", anio) # Extrae el URL del mes
   pagina_mes <- read_html(url_mes) # Guarda el HTML del URL del mes
-  ruta_html <- file.path(data_dir, paste0("mes_", mes, ".html")) # Crea la ruta para el HTML
+  fecha <- Sys.Date()
+  ruta_html <- file.path(data_dir, paste0("mes_", mes, "_", fecha, ".html")) # Crea la ruta para el HTML
   write_html(pagina_mes, ruta_html) # Escribe el HTML
   titulos_mes <- pagina_mes %>% # Guarda los títulos de cada comunicado de la pagina del mes
     html_elements(".itemmenulink") %>%
