@@ -1,0 +1,45 @@
+---
+title: "informe_oea"
+format: html
+---
+
+## Introducción
+
+El objetivo de este trabajo es analizar el contenido de comunicados de prensa de la Organización de los Estados Americanos (OEA) mediante técnicas de web scraping y procesamiento de texto.
+
+Se busca identificar la frecuencia de términos relevantes dentro del discurso institucional de la organización.
+
+## Estructura del proyecto
+
+El proyecto se estructura dentro de la carpeta TP2, que contiene 4 carpetas.
+
+  - data: contiene los archivos HTML de lo scrapeado de los 4 meses (enero-abril) de     comunicados de prensa de la OEA y la tabla de comunicados en formato RDS, que tiene tres variables: id del comunicado, titulo, cuerpo.
+  - notebooks: contiene el presente informe en formato QMD.
+  - output: contiene el texto procesado (lematizado, tokenizado y sin stop words, dígitos, signos de puntuación, mayúsculas, espacios y caracteres especiales) y el gráfico en formato PNG que muestra la frecuencia de los 5 términos seleccionados (libertad, democrático, instituciones, protocolar y prensa).
+  - scripts: contiene los tres scripts utilizados para el scrapping, el procesamiento y el análisis de los datos. scraping_oea.R realiza la recolección de los comunicados de prensa y construye una base de datos estructurada, processing.R limpia el texto, aplica lematización y elimina palabras irrelevantes y, finalmente, metrics_figures.R calcula métricas sobre el texto procesado y genera visualizaciones.
+  
+El notebook ejecuta estos scripts en orden para reproducir el análisis completo.
+  
+## Ejecución del análisis
+```{r}
+library(here)
+
+source(here("TP2/scripts/scraping_oea.R"))
+source(here("TP2/scripts/processing.R"))
+source(here("TP2/scripts/metrics_figures.R"))
+```
+
+## Resultados
+A continuación se presenta la frecuencia de cinco términos seleccionados dentro de los comunicados de la OEA.
+```{r}
+knitr::include_graphics(here("TP2/output/frecuencia_terminos.png"))
+```
+
+## Interpretación
+El análisis muestra una fuerte presencia del término "democrático", lo que refleja el énfasis de la OEA en la promoción de la democracia y los procesos electorales en la región.
+
+Otros términos como "libertad" y "prensa" también aparecen con frecuencia, lo que sugiere un enfoque en la gobernanza, el fortalecimiento institucional y los derechos fundamentales.
+
+Sin embargo, las cuestiones más procedimentales de la institucionalidad de la OEA, como lo son las "instituciones" y lo "protocolar" aparece una cantidad acotada de veces. Esto podría atribuirse a que los valores centrales, como la democracia y la libertad, ocupan un rol más prioritario en la agenda de la OEA por encima de procedimientos específicos. La diferencia marcada entre "democrático" y el resto de los términos sugiere que el discurso de la OEA está fuertemente concentrado en la promoción de la democracia como eje central, por encima de otros aspectos institucionales.
+
+En conjunto, los resultados evidencian el carácter normativo e institucional del discurso de la organización.
