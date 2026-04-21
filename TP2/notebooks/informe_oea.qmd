@@ -14,7 +14,7 @@ Se busca identificar la frecuencia de términos relevantes dentro del discurso i
 
 El proyecto se estructura dentro de la carpeta TP2, que contiene 4 carpetas.
 
--   data: contiene los archivos HTML de lo scrapeado de los 4 meses (enero-abril) de comunicados de prensa de la OEA y la tabla de comunicados en formato RDS, que tiene tres variables: id del comunicado, titulo, cuerpo.
+-   data: contiene los archivos HTML de lo scrapeado de los 4 meses (enero-abril) de comunicados de prensa de la OEA y la tabla de comunicados en formato RDS, que tiene tres variables: id del comunicado, título, cuerpo.
 -   notebooks: contiene el presente informe en formato QMD.
 -   output: contiene el texto procesado (lematizado, tokenizado y sin stop words, dígitos, signos de puntuación, mayúsculas, espacios y caracteres especiales) y el gráfico en formato PNG que muestra la frecuencia de los 5 términos seleccionados (libertad, democrático, instituciones, protocolar y prensa).
 -   scripts: contiene los tres scripts utilizados para el scrapping, el procesamiento y el análisis de los datos. scraping_oea.R realiza la recolección de los comunicados de prensa y construye una base de datos estructurada, processing.R limpia el texto, aplica lematización y elimina palabras irrelevantes y, finalmente, metrics_figures.R calcula métricas sobre el texto procesado y genera visualizaciones.
