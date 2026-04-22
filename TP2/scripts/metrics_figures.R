@@ -2,6 +2,8 @@ library(tidyverse)
 library(here)
 library(tm)
 
+message("Iniciando script de métricas y figura")
+
 comunicados_procesados <- readRDS(here("TP2", "output", "processed_text.rds"))
 
 # Creo directorio para el output
@@ -22,6 +24,7 @@ conteos_doc_lemma <- comunicados_procesados %>%
 # Paso a formato wide para construir la matriz DTM, donde cada fila es un documento,
 # cada columna es una palabra y las celdas indican la frecuencia absoluta
 # de un término específico dentro de un documento determinado.
+message("Construyendo la matriz DTM")
 dtm_base <- conteos_doc_lemma %>%
   pivot_wider(
     names_from = lemma,
@@ -32,6 +35,14 @@ dtm_base <- conteos_doc_lemma %>%
 # Elijo 5 términos relevantes dentro del contexto institucional de la OEA: 
 # libertad, democrático, instituciones, protocolar y prensa. 
 terminos_oea <- c("libertad", "democrático", "instituciones", "protocolar", "prensa")
+
+if (all(terminos_oea %in% names(dtm_base))) {
+  message("Los cinco términos seleccionados están presentes en la DTM")
+} else {
+  message("Uno o más términos seleccionados no están presentes en la DTM")
+}
+
+message("Calculando frecuencia total de los términos seleccionados")
 
 frecuencia_5_terminos <- dtm_base %>%
   select(all_of(terminos_oea)) %>%
@@ -51,9 +62,21 @@ grafico_terminos <- ggplot(frecuencia_5_terminos,
     y = "Frecuencia total"
   )
 
+message("Generando gráfico de barras")
+
+if (inherits(grafico_terminos, "ggplot")) {
+  message("Gráfico generado correctamente")
+} else {
+  else("Error al generar el gráfico")
+}
+
+message("Guardando gráfico en formato .png")
+
 ggsave(
   filename = here("TP2", "output", "frecuencia_terminos.png"),
   plot = grafico_terminos,
   width = 8,
   height = 6
 )
+
+message("Proceso finalizado con éxito")

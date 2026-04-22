@@ -3,6 +3,8 @@ library(here)
 library(udpipe)
 library(stopwords)
 
+message("Iniciando script de procesamiento de comunicados")
+
 tabla <- readRDS(here("TP2", "data", "tabla_comunicados.rds"))
 
 # Creo directorio para el output
@@ -26,6 +28,12 @@ tabla_limpia <- tabla %>%
       str_squish() # Elimina espacios al principio y el final, elimina múltiples espacios
   )
 
+if ("cuerpo_limpio" %in% names(tabla_limpia)) {
+  message("Limpieza completada correctamente")
+} else {
+  message("Error en la limpieza del texto")
+}
+
 ################ Lematización y Tokenización #################
 # Descarga y carga el modelo de lematización en español
 m_es <- udpipe_download_model(language = "spanish", overwrite = FALSE)
@@ -40,11 +48,19 @@ anotaciones <- udpipe_annotate(
 comunicados_lemas <- as_tibble(anotaciones) %>% # Convierto a tabla para facilitar interpretación
   select(id = doc_id, lemma, upos) # Me quedo con lo relevante: el id, la forma base de la palabra (lemma) y el tipo de palabra (upos)
 
+if (nrow(comunicados_lemas) > 0) {
+  message("Lematización y tokenización completadas con ", nrow(comunicados_lemas), " observaciones")
+} else {
+  message("La lematización/tokenización no produjo resultados")
+}
+
 ################## Stopwords ##########################
 stop_es <- stopwords::stopwords("es") # Defino las stopwords en español
 stop_en <- stopwords::stopwords("en") # Defino las stopwords en inglés
 
 stop_words <- tibble(lemma = c(stop_es, stop_en)) # Las guardo en una tabla dentro de la variable lemma
+
+message("Filtrando sustantivos, verbos y adjetivos, convirtiendo a minúscula y eliminando stopwords")
 
 # Las elimino con un anti join
 comunicados_procesados <- comunicados_lemas %>%
@@ -52,5 +68,13 @@ comunicados_procesados <- comunicados_lemas %>%
   mutate(lemma = str_to_lower(lemma)) %>% # Convierto en minúscula a las palabras base
   anti_join(stop_words, by = "lemma") # Saco las que aparecen en la key "lemma" dentro de la tabla de stop words
 
+if (nrow(comunicados_procesados) > 0) {
+  message("Procesamiento final completado")
+} else {
+  message("El procesamiento final no generó resultados")
+}
+
 saveRDS(comunicados_procesados,
         file = here("TP2", "output", "processed_text.rds"))
+
+message("Proceso finalizado con éxito")
