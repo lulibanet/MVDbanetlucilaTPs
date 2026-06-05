@@ -146,7 +146,7 @@ Primero, realizo visualizaciones bivariadas entre potenciales variables explicat
 A partir de la exploración visual no se observan distribuciones extremadamente asimétricas ni valores atípicos que justifiquen aplicar transformaciones adicionales sobre la variable edad. Por lo tanto, se mantendrá en su escala original.
 
 Asimismo, los gráficos sugieren una posible interacción entre educación y sexo. Teóricamente, el retorno económico de la educación podría diferir entre hombres y mujeres debido a diferencias persistentes en el mercado laboral y esto se comprueba por la asimetría vista en los gráficos que sugiere la posibilidad de una interacción. Por este motivo, resulta razonable evaluar posteriormente un término de interacción entre ambas variables dentro de las especificaciones del modelo logístico.
-```{r}
+```{r, fig.width=14, fig.height=9, out.width="100%"}
 # Visualizaciones bivariadas
 edad_ingreso <- censo %>%
   ggplot(aes(x = income, y = age, fill = income, color = income)) +
@@ -228,15 +228,24 @@ tipo_trabajo_ingreso <- censo %>%
   )
 
 # Combino los gráficos
-grafico_combinado <- (edad_ingreso | educacion_ingreso) /
-(sexo_ingreso | no_blanco_ingreso) /
-tipo_trabajo_ingreso +
+grafico_combinado <- (
+  (edad_ingreso | educacion_ingreso) /
+  (sexo_ingreso | no_blanco_ingreso) /
+  tipo_trabajo_ingreso
+) +
+  plot_layout(guides = "collect", heights = c(1, 1, 1)) +
   plot_annotation(
     title = "Distribución de variables predictoras según nivel de ingreso",
-    subtitle = "Visualizaciones bivariadas entre predictores sociodemográficos/laborales y la variable objetivo",
-    theme = theme(
-      plot.title = element_text(face = "bold", size = 18)
-    )
+    subtitle = "Visualizaciones bivariadas entre predictores sociodemográficos/laborales y la variable objetivo"
+  ) &
+  theme(
+    legend.position = "right",
+    plot.title = element_text(face = "bold", size = 13),
+    plot.subtitle = element_text(size = 10),
+    axis.title = element_text(size = 10),
+    axis.text = element_text(size = 8),
+    legend.title = element_text(size = 10),
+    legend.text = element_text(size = 9)
   )
 
 print(grafico_combinado)
