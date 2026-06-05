@@ -239,13 +239,7 @@ tipo_trabajo_ingreso +
     )
   )
 
-ggsave(
-  filename = here("TP3", "Gráficos bivariados.png"),
-  plot = grafico_combinado,
-  width = 16,
-  height = 10,
-  dpi = 300
-)
+print(grafico_combinado)
 ```
 
 ## Ajuste de Modelos (Regresión Logística)
@@ -278,26 +272,8 @@ modelo_logit2 <- glm(
   family = binomial(link = "logit")
 )
 
-stargazer(
-  modelo_logit1, modelo_logit2,
-  type = "html",
-  out = "../tabla_logit.html",
-  title = "Modelo Logit: variables explicativas del ingreso",
-  dep.var.labels = "Ingreso",
-  covariate.labels = c(
-    "Mujer",
-    "Edad",
-    "No ser blanco",
-    "Educación",
-    "Trabajo en el gobierno",
-    "Sin sueldo",
-    "Sexo*Educación"
-  ),
-  omit.stat = c("ll", "ser", "f"),
-  digits = 3,
-  star.cutoffs = c(0.1, 0.05, 0.01),
-  notes.align = "l"
-)
+summary(modelo_logit1)
+summary(modelo_logit2)
 ```
 La tabla presenta los resultados de los dos modelos logísticos estimados. El Modelo 1 incluye únicamente los efectos principales de las variables seleccionadas, mientras que el Modelo 2 incorpora además una interacción entre sexo y educación.
 
