@@ -71,6 +71,7 @@ Luego, transformo las variables de educación, clase de ocupación, raza y sexo 
 - Clase de ocupación: dos variables binarias, una sobre si trabaja en el gobierno (cualquier tipo de gobierno) y otra sobre si no tiene sueldo (1 no tiene sueldo, 0 todo el resto de los tipos de trabajo). La categoría de referencia es ser trabajador privado o cuentapropista.
 - Raza: binaria donde 1 es ser "no blanco" (negro, asiático, etc) y 0 es ser blanco.
 - Sexo: binaria donde 1 es ser mujer y 0 es ser hombre.
+Además, creo la variable género para facilitar el armado de gráficos posteriormente.
 Posteriormente, veo si mi variable dependiente se encuentra balanceada. A la hora de hacer una estimación logística es importante verificar que la variable objetivo se encuentre balanceada. En este caso, la distribución de `income` muestra que hay una cantidad relativamente similar de observaciones para ingresos bajos (`<=50K`) e ingresos altos (`>50K`).Esto indica que el dataset está bastante balanceado, por lo que no parece necesario aplicar técnicas adicionales como submuestreo, sobremuestreo o ajustes ponderados. Este balance permite enfocarnos en la interpretación del modelo.
 ```{r}
 censo <- censo %>% select(education, age, workclass, race, sex, income)
@@ -123,7 +124,8 @@ censo <- censo %>% mutate(
     workclass == "Without-pay" ~ 1,
     workclass == "Private" ~ 0,
     TRUE ~ NA_real_),
-  sexo = ifelse(sex == "Female", 1, 0)
+  sexo = ifelse(sex == "Female", 1, 0),
+  genero = ifelse(sex == "Female", "Mujeres", "Hombres")
   )
 
 # Comprobamos el balance de nuestra variable objetivo
@@ -136,18 +138,9 @@ print(prop.table(table(censo$income)) |> round(3))
 La variable dependiente está razonablemente balanceada, 52% <=50K y 47% >50K. 
 
 ## Análisis Exploratorio y Decisiones de Transformación
-Primero, realizo visualizaciones bivariadas entre potenciales variables explicativas y la variable dependiente, ingreso:
-1. Edad e ingreso: los individuos con ingresos superiores a USD 50.000 presentan una distribución desplazada hacia edades más altas y una mediana superior a la observada en el grupo de menores ingresos. Esto sugiere que la edad podría estar positivamente asociada con la probabilidad de pertenecer al grupo de ingresos altos, posiblemente debido a una mayor experiencia laboral acumulada.
-2. Educación e ingreso: a medida que aumenta el nivel educativo, crece sistemáticamente la proporción de individuos con ingresos superiores a USD 50.000.
-3. Sexo e ingreso: en mujeres es más común ver una mayor concentración de personas con ingresos iguales o por debajo a 50K. En hombres, la distribución es equitativa.
-4. No blanco e ingreso: los individuos clasificados como blancos (0) presentan una proporción mayor de ingresos altos que aquellos clasificados como no blancos (1).
-5. Tipo de trabajo (trabajo en el gobierno) e ingreso: los individuos que no pertenecen al grupo de trabajadores en el gobierno (0) muestran una proporción ligeramente inferior de ingresos altos respecto de aquellos clasificados como trabajadores gubernamentales (1). De todas formas, no se ve un efecto tan significativo.
+Primero, realizo visualizaciones bivariadas entre potenciales variables explicativas y la variable dependiente, ingreso.
 
-A partir de la exploración visual no se observan distribuciones extremadamente asimétricas ni valores atípicos que justifiquen aplicar transformaciones adicionales sobre la variable edad. Por lo tanto, se mantendrá en su escala original.
-
-Asimismo, los gráficos sugieren una posible interacción entre educación y sexo. Teóricamente, el retorno económico de la educación podría diferir entre hombres y mujeres debido a diferencias persistentes en el mercado laboral y esto se comprueba por la asimetría vista en los gráficos que sugiere la posibilidad de una interacción. Por este motivo, resulta razonable evaluar posteriormente un término de interacción entre ambas variables dentro de las especificaciones del modelo logístico.
 ```{r, fig.width=14, fig.height=9, out.width="100%"}
-# Visualizaciones bivariadas
 edad_ingreso <- censo %>%
   ggplot(aes(x = income, y = age, fill = income, color = income)) +
   geom_violin(alpha = 0.3, linewidth = 0.5, width = 0.8) +
@@ -163,6 +156,11 @@ edad_ingreso <- censo %>%
     legend.position = "none"
   )
 
+print(edad_ingreso)
+```
+Edad e ingreso: los individuos con ingresos superiores a USD 50.000 presentan una distribución desplazada hacia edades más altas y una mediana superior a la observada en el grupo de menores ingresos. Esto sugiere que la edad podría estar positivamente asociada con la probabilidad de pertenecer al grupo de ingresos altos, posiblemente debido a una mayor experiencia laboral acumulada.
+
+```{r, fig.width=14, fig.height=9, out.width="100%"}
 educacion_ingreso <- censo %>%
   ggplot(aes(x = factor(education), fill = income)) +
   geom_bar(position = "fill", alpha = 0.8, color = "white") +
@@ -179,6 +177,11 @@ educacion_ingreso <- censo %>%
     panel.grid.major.x = element_blank()
   )
 
+print(educacion_ingreso)
+```
+Educación e ingreso: a medida que aumenta el nivel educativo, crece sistemáticamente la proporción de individuos con ingresos superiores a USD 50.000.
+
+```{r, fig.width=14, fig.height=9, out.width="100%"}
 sexo_ingreso <- censo %>%
   ggplot(aes(x = factor(sexo), fill = income)) +
   geom_bar(position = "fill", alpha = 0.8, color = "white") +
@@ -195,6 +198,11 @@ sexo_ingreso <- censo %>%
     panel.grid.major.x = element_blank()
   )
 
+print(sexo_ingreso)
+```
+Sexo e ingreso: en mujeres es más común ver una mayor concentración de personas con ingresos iguales o por debajo a 50K. En hombres, la distribución es equitativa.
+
+```{r, fig.width=14, fig.height=9, out.width="100%"}
 no_blanco_ingreso <- censo %>%
   ggplot(aes(x = factor(no_blanco), fill = income)) +
   geom_bar(position = "fill", alpha = 0.8, color = "white") +
@@ -211,6 +219,11 @@ no_blanco_ingreso <- censo %>%
     panel.grid.major.x = element_blank()
   )
 
+print(no_blanco_ingreso)
+```
+No blanco e ingreso: los individuos clasificados como blancos (0) presentan una proporción mayor de ingresos altos que aquellos clasificados como no blancos (1).
+
+```{r, fig.width=14, fig.height=9, out.width="100%"}
 tipo_trabajo_ingreso <- censo %>%
   ggplot(aes(x = factor(trabaja_gob), fill = income)) +
   geom_bar(position = "fill", alpha = 0.8, color = "white") +
@@ -227,6 +240,11 @@ tipo_trabajo_ingreso <- censo %>%
     panel.grid.major.x = element_blank()
   )
 
+print(tipo_trabajo_ingreso)
+```
+Tipo de trabajo (trabajo en el gobierno) e ingreso: los individuos que no pertenecen al grupo de trabajadores en el gobierno (0) muestran una proporción ligeramente inferior de ingresos altos respecto de aquellos clasificados como trabajadores gubernamentales (1). De todas formas, no se ve un efecto tan significativo.
+
+```{r, fig.width=14, fig.height=9, out.width="100%"}
 # Combino los gráficos
 grafico_combinado <- (
   (edad_ingreso | educacion_ingreso) /
@@ -250,6 +268,35 @@ grafico_combinado <- (
 
 print(grafico_combinado)
 ```
+A partir de la exploración visual no se observan distribuciones extremadamente asimétricas ni valores atípicos que justifiquen aplicar transformaciones adicionales sobre la variable edad. Por lo tanto, se mantendrá en su escala original.
+
+Asimismo, los gráficos sugieren una posible interacción entre educación y sexo. Teóricamente, el retorno económico de la educación podría diferir entre hombres y mujeres debido a diferencias persistentes en el mercado laboral y esto se comprueba por la asimetría vista en los gráficos que sugiere la posibilidad de una interacción. Para comprobarlo, realizo un gráfico bivariado entre educación e ingreso faceteado por género para asegurarme de que la distribución es diferente en base al género. 
+
+```{r, fig.width=14, fig.height=9, out.width="100%"}
+educacion_ingreso_genero <- censo %>%
+  ggplot(aes(x = factor(education), fill = income)) +
+  geom_bar(position = "fill", alpha = 0.8, color = "white") +
+  facet_wrap(~ genero) +
+  scale_y_continuous(labels = scales::percent) +
+  labs(
+    title = "Ingresos según nivel educativo, por género",
+    subtitle = "Distribución de ingresos altos y bajos dentro de cada nivel educativo",
+    x = "Nivel educativo",
+    y = "Proporción",
+    fill = "Ingreso"
+  ) +
+  theme_minimal(base_size = 14) +
+  theme(
+    plot.title = element_text(face = "bold", size = 15),
+    panel.grid.major.x = element_blank(),
+    axis.text.x = element_text(angle = 45, hjust = 1)
+  )
+
+print(educacion_ingreso_genero)
+```
+El gráfico permite observar la relación entre nivel educativo e ingreso separadamente para hombres y mujeres. En ambos grupos, la proporción de personas con ingresos superiores a USD 50.000 aumenta a medida que crece el nivel educativo. Sin embargo, la distribución no parece idéntica entre géneros: para niveles educativos similares, las mujeres presentan una menor proporción de ingresos altos que los hombres. 
+
+Esto no prueba por sí solo que exista una interacción estadísticamente significativa, pero sí justifica incluirla en el modelo. Visualmente, resulta razonable evaluar si el efecto de la educación sobre la probabilidad de obtener ingresos altos varía según el género.
 
 ## Ajuste de Modelos (Regresión Logística)
 Realizo dos modelos: uno con las variables explicativas de forma directa y uno que incluye las variables interactuadas. La categoría de referencia para income es <=50K. Para sexo, la referencia es hombre (0). Para raza, blanco (0). Para tipo de trabajo, trabajadores privados o cuentapropistas. 
@@ -295,36 +342,6 @@ Respecto de la interacción incorporada en el Modelo 2, el coeficiente asociado 
 Al comparar el Modelo 1 y el Modelo 2, los coeficientes principales mantienen signo, magnitud e inferencia estadística similares. La incorporación de la interacción sexo × educación no mejora sustancialmente la explicación del fenómeno y además el término interactivo no resulta significativo.
 
 ## Interpretación de Resultados y Efectos Marginales
-Primero comienzo interpretando los efectos promedio marginales (AME).
-
-Nota sobre la interacción: aunque el Modelo 2 incluye una interacción entre sexo y educación, esta no aparece como una fila independiente en la tabla de Efectos Marginales Promedio (AME). Esto ocurre porque los AME reportan los efectos marginales de cada predictor sobre la probabilidad predicha, incorporando automáticamente el efecto de la interacción en dichos cálculos. Por este motivo, la interacción debe interpretarse a partir de los coeficientes del modelo logístico y no como un efecto marginal separado.
-
-- **Edad (dY/dX):** en promedio, un año adicional de edad aumenta la probabilidad de obtener ingresos superiores a USD 50.000 en aproximadamente 0.92 puntos porcentuales.
-- **Educación (dY/dX):** en promedio, un año adicional de educación aumenta la probabilidad de pertenecer al grupo de ingresos altos en aproximadamente 6.68 puntos porcentuales. Se trata del predictor continuo con mayor efecto positivo.
-- **No blanco (1-0):** en promedio, las personas no blancas presentan una probabilidad 6.21 puntos porcentuales menor de pertenecer al grupo de ingresos altos.
-- **Sexo (Mujer-Hombre):** en promedio, las mujeres presentan una probabilidad 24.51 puntos porcentuales menor de obtener ingresos superiores a USD 50.000 respecto de los hombres.
-- **Sin sueldo (1-0):** las personas clasificadas como sin sueldo presentan una probabilidad significativamente menor de pertenecer al grupo de ingresos altos.
-- **Trabajo en el gobierno (1-0):** el efecto estimado es positivo, pero no resulta estadísticamente significativo.
-
-Se incorporó una interacción entre sexo y educación con el objetivo de evaluar si el efecto de la educación sobre los ingresos difiere entre hombres y mujeres. Sin embargo, el coeficiente asociado a la interacción no resulta estadísticamente significativo, por lo que no existe evidencia suficiente para afirmar que los retornos de la educación sean distintos según el sexo. En consecuencia, el efecto positivo de la educación sobre la probabilidad de obtener ingresos altos parece ser similar para hombres y mujeres.
-
-Para facilitar la interpretación de los coeficientes del modelo logístico, se transformaron los coeficientes estimados en Odds Ratios (OR) mediante la función exponencial. Los Odds Ratios indican cuánto se multiplican las chances (odds) de obtener ingresos superiores a USD 50.000 ante un cambio unitario en una variable explicativa, manteniendo constantes las demás variables.
-
-Si OR > 1, la variable aumenta las chances de pertenecer al grupo de ingresos altos.
-Si OR < 1, la variable disminuye las chances.
-Si OR = 1, la variable no tiene efecto sobre las chances.
-
-A continuación se presenta un forest plot con los Odds Ratios estimados para el Modelo 2. El gráfico utiliza escala logarítmica en el eje horizontal e incluye intervalos de confianza del 80%, 95% y 99%, tal como solicita la consigna. La línea vertical roja indica el valor OR = 1, que representa ausencia de efecto.
-
-La variable sin_sueldo fue excluida únicamente de la visualización del forest plot. Esta variable permanece dentro del modelo y en las tablas de resultados. Sin embargo, presenta un Odds Ratio extremadamente pequeño acompañado de intervalos de confianza muy amplios, producto de la escasa cantidad de observaciones en esa categoría. Su inclusión en el gráfico distorsiona la escala logarítmica y dificulta la visualización del resto de los coeficientes. Por este motivo se la omite únicamente con fines gráficos, sin alterar la estimación del modelo.
-
-Los resultados del Forest Plot muestran:
-- Educación presenta un Odds Ratio superior a 1 y claramente significativo. Esto indica que mayores niveles educativos aumentan las chances de pertenecer al grupo de ingresos superiores a USD 50.000.
-- Mujer presenta un Odds Ratio inferior a 1, lo que implica menores chances de pertenecer al grupo de ingresos altos respecto de los hombres.
-- No blanco también presenta un Odds Ratio inferior a 1, indicando menores chances de obtener ingresos altos en comparación con las personas blancas.
-- Edad presenta un efecto positivo pero relativamente pequeño.
-- Trabajo en gobierno presenta un Odds Ratio cercano a 1 y su intervalo de confianza incluye el valor de referencia, por lo que no existe evidencia estadística suficiente para afirmar que trabajar en el gobierno modifica las chances de obtener ingresos altos.
-- La interacción Sexo × Educación presenta un Odds Ratio muy cercano a 1 y sus intervalos de confianza atraviesan el valor de referencia. Esto coincide con los resultados del modelo logístico, donde el coeficiente de interacción no resultó estadísticamente significativo. Por lo tanto, no existe evidencia suficiente para afirmar que el efecto de la educación sobre los ingresos sea distinto para hombres y mujeres.
 ```{r}
 # Efectos Marginales Promedio (AME)
 efectos_marginales <- avg_slopes(
@@ -378,7 +395,19 @@ efectos_marginales %>%
     bold = TRUE,
     background = "#e6f2ff"
   )
+```
+Nota sobre la interacción: aunque el Modelo 2 incluye una interacción entre sexo y educación, esta no aparece como una fila independiente en la tabla de Efectos Marginales Promedio (AME). Esto ocurre porque los AME reportan los efectos marginales de cada predictor sobre la probabilidad predicha, incorporando automáticamente el efecto de la interacción en dichos cálculos. Por este motivo, la interacción debe interpretarse a partir de los coeficientes del modelo logístico y no como un efecto marginal separado.
 
+- **Edad (dY/dX):** en promedio, un año adicional de edad aumenta la probabilidad de obtener ingresos superiores a USD 50.000 en aproximadamente 0.92 puntos porcentuales.
+- **Educación (dY/dX):** en promedio, un año adicional de educación aumenta la probabilidad de pertenecer al grupo de ingresos altos en aproximadamente 6.68 puntos porcentuales. Se trata del predictor continuo con mayor efecto positivo.
+- **No blanco (1-0):** en promedio, las personas no blancas presentan una probabilidad 6.21 puntos porcentuales menor de pertenecer al grupo de ingresos altos.
+- **Sexo (Mujer-Hombre):** en promedio, las mujeres presentan una probabilidad 24.51 puntos porcentuales menor de obtener ingresos superiores a USD 50.000 respecto de los hombres.
+- **Sin sueldo (1-0):** las personas clasificadas como sin sueldo presentan una probabilidad significativamente menor de pertenecer al grupo de ingresos altos.
+- **Trabajo en el gobierno (1-0):** el efecto estimado es positivo, pero no resulta estadísticamente significativo.
+
+Se incorporó una interacción entre sexo y educación con el objetivo de evaluar si el efecto de la educación sobre los ingresos difiere entre hombres y mujeres. Sin embargo, el coeficiente asociado a la interacción no resulta estadísticamente significativo, por lo que no existe evidencia suficiente para afirmar que los retornos de la educación sean distintos según el sexo. En consecuencia, el efecto positivo de la educación sobre la probabilidad de obtener ingresos altos parece ser similar para hombres y mujeres.
+
+```{r}
 or_99 <- broom::tidy(modelo_logit2, exponentiate = TRUE,
                      conf.int = TRUE, conf.level = 0.99)
 
@@ -459,6 +488,23 @@ ggsave(
   dpi = 300
 )
 ```
+Para facilitar la interpretación de los coeficientes del modelo logístico, se transformaron los coeficientes estimados en Odds Ratios (OR) mediante la función exponencial. Los Odds Ratios indican cuánto se multiplican las chances (odds) de obtener ingresos superiores a USD 50.000 ante un cambio unitario en una variable explicativa, manteniendo constantes las demás variables.
+
+Si OR > 1, la variable aumenta las chances de pertenecer al grupo de ingresos altos.
+Si OR < 1, la variable disminuye las chances.
+Si OR = 1, la variable no tiene efecto sobre las chances.
+
+A continuación se presenta un forest plot con los Odds Ratios estimados para el Modelo 2. El gráfico utiliza escala logarítmica en el eje horizontal e incluye intervalos de confianza del 80%, 95% y 99%, tal como solicita la consigna. La línea vertical roja indica el valor OR = 1, que representa ausencia de efecto.
+
+La variable sin_sueldo fue excluida únicamente de la visualización del forest plot. Esta variable permanece dentro del modelo y en las tablas de resultados. Sin embargo, presenta un Odds Ratio extremadamente pequeño acompañado de intervalos de confianza muy amplios, producto de la escasa cantidad de observaciones en esa categoría. Su inclusión en el gráfico distorsiona la escala logarítmica y dificulta la visualización del resto de los coeficientes. Por este motivo se la omite únicamente con fines gráficos, sin alterar la estimación del modelo.
+
+Los resultados del Forest Plot muestran:
+- Educación presenta un Odds Ratio superior a 1 y claramente significativo. Esto indica que mayores niveles educativos aumentan las chances de pertenecer al grupo de ingresos superiores a USD 50.000.
+- Mujer presenta un Odds Ratio inferior a 1, lo que implica menores chances de pertenecer al grupo de ingresos altos respecto de los hombres.
+- No blanco también presenta un Odds Ratio inferior a 1, indicando menores chances de obtener ingresos altos en comparación con las personas blancas.
+- Edad presenta un efecto positivo pero relativamente pequeño.
+- Trabajo en gobierno presenta un Odds Ratio cercano a 1 y su intervalo de confianza incluye el valor de referencia, por lo que no existe evidencia estadística suficiente para afirmar que trabajar en el gobierno modifica las chances de obtener ingresos altos.
+- La interacción Sexo × Educación presenta un Odds Ratio muy cercano a 1 y sus intervalos de confianza atraviesan el valor de referencia. Esto coincide con los resultados del modelo logístico, donde el coeficiente de interacción no resultó estadísticamente significativo. Por lo tanto, no existe evidencia suficiente para afirmar que el efecto de la educación sobre los ingresos sea distinto para hombres y mujeres.
 
 ## Comparación global de los modelos
 Para evaluar el desempeño global de los modelos se compararon el AIC, la deviance y el Pseudo-R². El Modelo 2 presenta una deviance levemente menor (17041 frente a 17042), lo que indica una mejora marginal en el ajuste. Sin embargo, el AIC aumenta ligeramente (17056.57 frente a 17055.76), mientras que el Pseudo-R² permanece prácticamente idéntico en ambos modelos (0.219).
